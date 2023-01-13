@@ -56,12 +56,12 @@ def plot_frame(pred, webcam, path, dataset, im0s, img, names, colors):
 
 
 def mainloop(args):
-    source, weights, view_img, save_txt, imgsz, trace = args.source, agrs.weights, agrs.view_img,\
-                                                    agrs.save_txt, agrs.img_size, not agrs.no_trace
+    source, weights, view_img, save_txt, imgsz, trace = args.source, args.weights, args.view_img,\
+                                                    args.save_txt, args.img_size, not args.no_trace
     set_logging()
     webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(
         ('rtsp://', 'rtmp://', 'http://', 'https://'))
-    device = select_device(agrs.device)
+    device = select_device(args.device)
     half = device.type != 'cpu'
 
     model = attempt_load(weights, map_location=device)  # load FP32 model
@@ -119,8 +119,8 @@ def mainloop(args):
         with torch.no_grad():   # Calculating gradients would cause a GPU memory leak
             pred = model(img, augment=args.augment)[0]
         # Apply NMS
-        pred = non_max_suppression(pred, agrs.conf_thres, agrs.iou_thres, classes=agrs.classes,
-                                   agnostic=agrs.agnostic_nms)
+        pred = non_max_suppression(pred, args.conf_thres, args.iou_thres, classes=args.classes,
+                                   agnostic=args.agnostic_nms)
         t3 = time_synchronized()
 
         # Apply Classifier
@@ -160,5 +160,5 @@ def args_set():
     return parser.parse_args()
 
 if __name__ == '__main__':
-    agrs = args_set()
-    mainloop(agrs)
+    args = args_set()
+    mainloop(args)
