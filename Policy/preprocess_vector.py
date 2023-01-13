@@ -13,20 +13,45 @@ import message_filters
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 
+global color_image, depth_image
 
-def callback(data1,data2):
+def callback(data1):
+    global color_image
     bridge = CvBridge()
     color_image = bridge.imgmsg_to_cv2(data1, 'bgr8')
+
+    # cv2.imshow('color_image', color_image)
+    # cv2.waitKey(1)
+
+def callback2(data2):
+    global depth_image
+    bridge = CvBridge()
     depth_image = bridge.imgmsg_to_cv2(data2, '16UC1')
-    cv2.imshow('color_image',color_image)
-    cv2.waitKey(10)
+    # cv2.imshow('depth_image', depth_image)
+    # cv2.waitKey(1)
+
 
 
 
 if __name__ == '__main__':
+    global color_image, depth_image
     rospy.init_node('get_image', anonymous=True)
-    color = message_filters.Subscriber("/camera/color/image_raw", Image)
-    depth = message_filters.Subscriber("/camera/depth/image_raw", Image)
-    color_depth = message_filters.TimeSynchronizer([color, depth], 1)  # 绝对时间同步
-    color_depth.registerCallback(callback)
+    rospy.Subscriber("/camera/color/image_raw", Image, callback)
+    rospy.Subscriber("/camera/depth/image_raw", Image, callback2)
+    r = rospy.Rate(10)  # 10Hz
+
+    while True:
+        try:
+            cv2.imshow('color_image', color_image)
+            cv2.imshow('depth_image', depth_image)
+        except:
+            pass
+        key = cv2.waitKey(1) & 0xFF
+        if key == 27:
+            cv2.destroyAllWindows()
+            rospy.signal_shutdown("shut_down")
+            break
+
+        print("1")
+        r.sleep()
     rospy.spin()
