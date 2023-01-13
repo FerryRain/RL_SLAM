@@ -195,7 +195,7 @@ if __name__ == '__main__':
     # rospy.Subscriber("/camera/depth/image_raw", Image, callback2)
     rospy.Subscriber("/hwt/px4/basic", Hwt_ht_basic, callback3)
     r = rospy.Rate(10)  # 10Hz
-
+    sensor = 0
     # Init Model
     model, imgsz, device, half, view_img, names, colors, stride = init_model()
 
@@ -205,7 +205,17 @@ if __name__ == '__main__':
             # cv2.imshow('depth_image', depth_image)
             # print(basic.attitude[2])
             pred = detect(color_image, model, imgsz, device, half, view_img, names, colors, stride)
-            print(pred[0][0])
+
+            sensor = np.array([round(basic.position_now[0], 2), round(basic.position_now[1], 2), round(basic.position_now[2], 2),
+                               round(basic.twist_now[0], 2),  round(basic.twist_now[1], 2), round(basic.attitude[2], 2)])
+                                # x  y  z  vx  vy  yaw
+            # sensor = torch.from_numpy(sensor)
+            pred = pred[0].numpy()
+            if pred.shape[0] != 0:
+                vector = torch.from_numpy(np.append(pred[0], sensor))
+            else:
+                vector = None
+            print(vector)
         except:
             pass
         key = cv2.waitKey(1) & 0xFF
