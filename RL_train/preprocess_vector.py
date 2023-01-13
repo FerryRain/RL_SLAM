@@ -178,6 +178,19 @@ def callback3(data3):
 -------------------------------------
 """
 
+def get_vector(model, imgsz, device, half, view_img, names, colors, stride, image, sensor):
+    pred = detect(image, model, imgsz, device, half, view_img, names, colors, stride)
+    sensor = np.array(
+        [round(sensor.position_now[0], 2), round(sensor.position_now[1], 2), round(sensor.position_now[2], 2),
+         round(sensor.twist_now[0], 2), round(sensor.twist_now[1], 2), round(sensor.attitude[2], 2)])
+    pred = pred[0].numpy()
+    if pred.shape[0] != 0:
+        vector = torch.from_numpy(np.append(pred[0], sensor))
+    else:
+        vector = None
+    print(vector)
+    return vector
+
 
 """
 -------------------------------------
@@ -203,19 +216,7 @@ if __name__ == '__main__':
         try:
             # cv2.imshow('color_image', color_image)
             # cv2.imshow('depth_image', depth_image)
-            # print(basic.attitude[2])
-            pred = detect(color_image, model, imgsz, device, half, view_img, names, colors, stride)
-
-            sensor = np.array([round(basic.position_now[0], 2), round(basic.position_now[1], 2), round(basic.position_now[2], 2),
-                               round(basic.twist_now[0], 2),  round(basic.twist_now[1], 2), round(basic.attitude[2], 2)])
-                                # x  y  z  vx  vy  yaw
-            # sensor = torch.from_numpy(sensor)
-            pred = pred[0].numpy()
-            if pred.shape[0] != 0:
-                vector = torch.from_numpy(np.append(pred[0], sensor))
-            else:
-                vector = None
-            print(vector)
+            get_vector( model, imgsz, device, half, view_img, names, colors, stride, color_image, basic)
         except:
             pass
         key = cv2.waitKey(1) & 0xFF
