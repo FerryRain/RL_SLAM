@@ -79,8 +79,6 @@ def plot_frame(pred, img1, img, names, colors):
         cv2.imshow("Vision", img)
         cv2.waitKey(1)  # 1 millisecond
 
-
-
 def detect(img, model, imgsz, device, half, view_img, names, colors, stride):
     global old_img_b, old_img_h, old_img_w
     img1 = letterbox(img, imgsz, stride=stride)[0]
@@ -159,7 +157,6 @@ def callback(data1):
     bridge = CvBridge()
     color_image = bridge.imgmsg_to_cv2(data1, 'bgr8')
 
-
 # def callback2(data2):
 #     global depth_image
 #     bridge = CvBridge()
@@ -177,7 +174,6 @@ def callback3(data3):
     # Data fusion
 -------------------------------------
 """
-
 def get_vector(model, imgsz, device, half, view_img, names, colors, stride, image, sensor):
     pred = detect(image, model, imgsz, device, half, view_img, names, colors, stride)
     sensor = np.array(
@@ -197,7 +193,6 @@ def get_vector(model, imgsz, device, half, view_img, names, colors, stride, imag
     # test
 -------------------------------------
 """
-
 if __name__ == '__main__':
     global color_image, depth_image, basic
     args = args_set()
