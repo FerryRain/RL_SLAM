@@ -9,6 +9,7 @@
 import argparse
 from pathlib import Path
 
+import numpy as np
 import rospy
 from std_msgs.msg import String
 from sensor_msgs.msg import Image, CameraInfo
@@ -27,6 +28,7 @@ from Thirdparty.yolov7.utils.general import check_img_size, check_requirements, 
     scale_coords, xyxy2xywh, set_logging, increment_path
 from Thirdparty.yolov7.utils.plots import plot_one_box
 from Thirdparty.yolov7.utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
+from Thirdparty.yolov7.utils.datasets import letterbox
 
 import sys
 sys.path.append('../Thirdparty/yolov7')
@@ -48,7 +50,7 @@ def args_set():
     parser.add_argument('--conf-thres', type=float, default=0.25, help='object confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='IOU threshold for NMS')
     parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
-    parser.add_argument('--view-img', action='store_true', help='display results')
+    parser.add_argument('--view-img', default='true', help='display results')
     parser.add_argument('--save-txt', action='store_true', help='save results to *.txt')
     parser.add_argument('--save-conf', action='store_true', help='save confidences in --save-txt labels')
     parser.add_argument('--nosave', action='store_true', help='do not save images/videos')
@@ -63,137 +65,55 @@ def args_set():
     return parser.parse_args()
 
 
-def plot_frame(pred, webcam, path, dataset, im0s, img, names, colors):
+# detect model init and get
+def plot_frame(pred, img1, img, names, colors):
     for i, det in enumerate(pred):  # detections per image
-        if webcam:  # batch_size >= 1
-            p, s, im0, frame = path[i], '%g: ' % i, im0s[i].copy(), dataset.count
-        else:
-            p, s, im0, frame = path, '', im0s, getattr(dataset, 'frame', 0)
-
-        p = Path(p)  # to Path
-        gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
+        gn = torch.tensor(img.shape)[[1, 0, 1, 0]]  # normalization gain whwh
         if len(det):
             # Rescale boxes from img_size to im0 size
-            det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
-
-            # Print results
-            for c in det[:, -1].unique():
-                n = (det[:, -1] == c).sum()  # detections per class
-                s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
+            det[:, :4] = scale_coords(img1.shape[2:], det[:, :4], img.shape).round()
 
             # Write results
             for *xyxy, conf, cls in reversed(det):
                 label = f'{names[int(cls)]} {conf:.2f}'
-                plot_one_box(xyxy, im0, label=label, color=colors[int(cls)], line_thickness=1)
+                plot_one_box(xyxy, img, label=label, color=colors[int(cls)], line_thickness=1)
 
-        # Stream results
-
-        cv2.imshow(str(p), im0)
+        cv2.imshow("Vision", img)
         cv2.waitKey(1)  # 1 millisecond
 
-def mainloop(args):
-    source, weights, view_img, save_txt, imgsz, trace = args.source, args.weights, args.view_img,\
-                                                    args.save_txt, args.img_size, not args.no_trace
-    set_logging()
-    webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(
-        ('rtsp://', 'rtmp://', 'http://', 'https://'))
-    device = select_device(args.device)
-    half = device.type != 'cpu'
-
-    model = attempt_load(weights, map_location=device)  # load FP32 model
-    stride = int(model.stride.max())  # model stride
-    imgsz = check_img_size(imgsz, s=stride)  # check img_size
-
-    if trace:
-        model = TracedModel(model, device, args.img_size)
-
-    if half:
-        model.half()  # to FP16
-
-    # Second-stage classifier
-    classify = False
-    if classify:
-        modelc = load_classifier(name='resnet101', n=2)  # initialize
-        modelc.load_state_dict(torch.load('weights/resnet101.pt', map_location=device)['model']).to(device).eval()
-
-    # Set Dataloader
-    vid_path, vid_writer = None, None
-    if webcam:
-        view_img = check_imshow()
-        cudnn.benchmark = True  # set True to speed up constant image size inference
-        dataset = LoadStreams(source, img_size=imgsz, stride=stride)
-    else:
-        dataset = LoadImages(source, img_size=imgsz, stride=stride)
-
-    # Get names and colors
-    names = model.module.names if hasattr(model, 'module') else model.names
-    colors = [[random.randint(0, 255) for _ in range(3)] for _ in names]
-
-    if device.type != 'cpu':
-        model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
-
-    if device.type != 'cpu':
-        model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
-    old_img_w = old_img_h = imgsz
-    old_img_b = 1
-
-    for path, img, im0s, vid_cap in dataset:
-        img = torch.from_numpy(img).to(device)
-        img = img.half() if half else img.float()  # uint8 to fp16/32
-        img /= 255.0  # 0 - 255 to 0.0 - 1.0
-        if img.ndimension() == 3:
-            img = img.unsqueeze(0)
-
-        # Warmup
-        if device.type != 'cpu' and (
-                old_img_b != img.shape[0] or old_img_h != img.shape[2] or old_img_w != img.shape[3]):
-            old_img_b = img.shape[0]
-            old_img_h = img.shape[2]
-            old_img_w = img.shape[3]
-            for i in range(3):
-                model(img, augment=args.augment)[0]
-        with torch.no_grad():   # Calculating gradients would cause a GPU memory leak
-            pred = model(img, augment=args.augment)[0]
-        # Apply NMS
-        pred = non_max_suppression(pred, args.conf_thres, args.iou_thres, classes=args.classes,
-                                   agnostic=args.agnostic_nms)
-        t3 = time_synchronized()
-
-        # Apply Classifier
-        if classify:
-            pred = apply_classifier(pred, modelc, img, im0s)
-        print(pred)
-
-        if view_img:
-            plot_frame(pred,webcam,path,dataset,im0s,img,names,colors)
-
-def detect(img, model, dataset, imgsz, device, half, view_img, webcam, names, colors):
+def detect(img, model, imgsz, device, half, view_img, names, colors, stride):
     global old_img_b, old_img_h, old_img_w
-    img = torch.from_numpy(img).to(device)
-    img = img.half() if half else img.float()  # uint8 to fp16/32
-    img /= 255.0  # 0 - 255 to 0.0 - 1.0
-    if img.ndimension() == 3:
-        img = img.unsqueeze(0)
+    img1 = letterbox(img, imgsz, stride=stride)[0]
+    img1 = img1[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
+    img1 = np.ascontiguousarray(img1)
+
+    img1 = torch.from_numpy(img1).to(device)
+    img1 = img1.half() if half else img1.float()  # uint8 to fp16/32
+    img1 /= 255.0  # 0 - 255 to 0.0 - 1.0
+    if img1.ndimension() == 3:
+        img1 = img1.unsqueeze(0)
 
     if device.type != 'cpu' and (
-            old_img_b != img.shape[0] or old_img_h != img.shape[2] or old_img_w != img.shape[3]):
-        old_img_b = img.shape[0]
-        old_img_h = img.shape[2]
-        old_img_w = img.shape[3]
+            old_img_b != img1.shape[0] or old_img_h != img1.shape[2] or old_img_w != img1.shape[3]):
+        old_img_b = img1.shape[0]
+        old_img_h = img1.shape[2]
+        old_img_w = img1.shape[3]
         for i in range(3):
-            model(img, augment=args.augment)[0]
+            model(img1, augment=args.augment)[0]
 
     with torch.no_grad():  # Calculating gradients would cause a GPU memory leak
-        pred = model(img, augment=args.augment)[0]
+        pred = model(img1, augment=args.augment)[0]
     # Apply NMS
     pred = non_max_suppression(pred, args.conf_thres, args.iou_thres, classes=args.classes,
                                agnostic=args.agnostic_nms)
     t3 = time_synchronized()
 
-    print(pred)
+    # print(pred)
 
     if view_img:
-        plot_frame(pred, webcam, path, dataset, im0s, img, names, colors)
+        plot_frame(pred, img1, img, names, colors)
+
+    return pred
 
 def init_model():
     global old_img_b, old_img_h, old_img_w
@@ -217,12 +137,12 @@ def init_model():
         model.half()  # to FP16
 
     vid_path, vid_writer = None, None
-    if webcam:
-        view_img = check_imshow()
-        cudnn.benchmark = True  # set True to speed up constant image size inference
-        dataset = LoadStreams(source, img_size=imgsz, stride=stride)
-    else:
-        dataset = LoadImages(source, img_size=imgsz, stride=stride)
+    # if webcam:
+    #     view_img = check_imshow()
+    #     cudnn.benchmark = True  # set True to speed up constant image size inference
+    #     dataset = LoadStreams(source, img_size=imgsz, stride=stride)
+    # else:
+    #     dataset = LoadImages(source, img_size=imgsz, stride=stride)
 
     # Get names and colors
     names = model.module.names if hasattr(model, 'module') else model.names
@@ -236,7 +156,7 @@ def init_model():
 
     old_img_w = old_img_h = imgsz
     old_img_b = 1
-    return model, dataset, imgsz, device, half, view_img, webcam, names, colors
+    return model, imgsz, device, half, view_img, webcam, names, colors, stride
 
 def callback(data1):
     global color_image
@@ -270,17 +190,16 @@ if __name__ == '__main__':
     rospy.Subscriber("/hwt/px4/basic", Hwt_ht_basic, callback3)
     r = rospy.Rate(10)  # 10Hz
 
-
-    # mainloop(args)
-    # x,y,z,vx,vy,yaw(attitude[2])
-
-    model, dataset, imgsz, device, half, view_img, webcam, names, colors = init_model()
+    # Init Model
+    model, imgsz, device, half, view_img, webcam, names, colors, stride = init_model()
 
     while True:
         try:
-            cv2.imshow('color_image', color_image)
+            # cv2.imshow('color_image', color_image)
             # cv2.imshow('depth_image', depth_image)
-            print(basic.attitude[2])
+            # print(basic.attitude[2])
+            pred = detect(color_image, model, imgsz, device, half, view_img, names, colors, stride)
+            print(pred[0][0])
         except:
             pass
         key = cv2.waitKey(1) & 0xFF
@@ -288,7 +207,5 @@ if __name__ == '__main__':
             cv2.destroyAllWindows()
             rospy.signal_shutdown("shut_down")
             break
-
-        # print("1")
-        # r.sleep()
+            
     rospy.spin()
