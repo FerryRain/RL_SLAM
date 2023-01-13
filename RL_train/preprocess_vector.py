@@ -19,14 +19,14 @@ from numpy import random
 from sensor_msgs.msg import Image
 
 from Environment_preprocessing.test_yolo import plot_frame
-from Thirdparty.yolov7.models.experimental import attempt_load
-from Thirdparty.yolov7.utils.datasets import letterbox
-from Thirdparty.yolov7.utils.general import check_img_size, non_max_suppression, \
+from Thirdpart.yolov7.models.experimental import attempt_load
+from Thirdpart.yolov7.utils.datasets import letterbox
+from Thirdpart.yolov7.utils.general import check_img_size, non_max_suppression, \
     scale_coords, set_logging
-from Thirdparty.yolov7.utils.plots import plot_one_box
-from Thirdparty.yolov7.utils.torch_utils import select_device, time_synchronized, TracedModel
+from Thirdpart.yolov7.utils.plots import plot_one_box
+from Thirdpart.yolov7.utils.torch_utils import select_device, time_synchronized, TracedModel
 
-sys.path.append('../Thirdparty/yolov7')
+sys.path.append('../Thirdpart/yolov7')
 
 global color_image, depth_image, basic
 global old_img_b, old_img_h, old_img_w
@@ -78,6 +78,7 @@ def plot_frame(pred, img1, img, names, colors):
 
         cv2.imshow("Vision", img)
         cv2.waitKey(1)  # 1 millisecond
+
 
 
 def detect(img, model, imgsz, device, half, view_img, names, colors, stride):
@@ -148,6 +149,11 @@ def init_model():
     return model, imgsz, device, half, view_img, names, colors, stride
 
 
+"""
+-------------------------------------
+    # Image Get
+-------------------------------------
+"""
 def callback(data1):
     global color_image
     bridge = CvBridge()
@@ -165,6 +171,19 @@ def callback3(data3):
     global basic
     basic = data3
 
+
+"""
+-------------------------------------
+    # Data fusion
+-------------------------------------
+"""
+
+
+"""
+-------------------------------------
+    # test
+-------------------------------------
+"""
 
 if __name__ == '__main__':
     global color_image, depth_image, basic

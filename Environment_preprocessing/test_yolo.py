@@ -6,7 +6,7 @@
 # Description：
 """
 import sys
-sys.path.append('../Thirdparty/yolov7')
+sys.path.append('../Thirdpart/yolov7')
 import argparse
 import time
 from pathlib import Path
@@ -17,12 +17,12 @@ import torch.backends.cudnn as cudnn
 from numpy import random
 
 # from yolov7.models import experimental
-from Thirdparty.yolov7.models.experimental import attempt_load
-from Thirdparty.yolov7.utils.datasets import LoadStreams, LoadImages
-from Thirdparty.yolov7.utils.general import check_img_size, check_requirements, check_imshow, non_max_suppression, apply_classifier, \
+from Thirdpart.yolov7.models.experimental import attempt_load
+from Thirdpart.yolov7.utils.datasets import LoadStreams, LoadImages
+from Thirdpart.yolov7.utils.general import check_img_size, check_requirements, check_imshow, non_max_suppression, apply_classifier, \
     scale_coords, xyxy2xywh, set_logging, increment_path
-from Thirdparty.yolov7.utils.plots import plot_one_box
-from Thirdparty.yolov7.utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
+from Thirdpart.yolov7.utils.plots import plot_one_box
+from Thirdpart.yolov7.utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 
 
 
