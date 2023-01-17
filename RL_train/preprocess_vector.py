@@ -44,7 +44,7 @@ def args_set():
     """
     #Yolo Part
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str, default='yolov7-tiny.pt', help='model.pt path(s)')
+    parser.add_argument('--weights', nargs='+', type=str, default='best.pt', help='model.pt path(s)')
     parser.add_argument('--img-size', type=int, default=640, help='inference size (pixels)')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='object confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='IOU threshold for NMS')
@@ -177,8 +177,11 @@ def callback3(data3):
 def get_vector(model, imgsz, device, half, view_img, names, colors, stride, image, sensor):
     pred = detect(image, model, imgsz, device, half, view_img, names, colors, stride)
     sensor = np.array(
-        [round(sensor.position_now[0], 2), round(sensor.position_now[1], 2), round(sensor.position_now[2], 2),
-         round(sensor.twist_now[0], 2), round(sensor.twist_now[1], 2), round(sensor.attitude[2], 2)])
+        [round(sensor.position_now[2], 2), round(sensor.attitude[2], 2)])
+
+    # sensor = np.array(
+    #     [round(sensor.position_now[0], 2), round(sensor.position_now[1], 2), round(sensor.position_now[2], 2),
+    #      round(sensor.twist_now[0], 2), round(sensor.twist_now[1], 2), round(sensor.attitude[2], 2)])
     pred = pred[0].numpy()
     if pred.shape[0] != 0:
         vector = torch.from_numpy(np.append(pred[0], sensor))
