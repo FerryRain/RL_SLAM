@@ -10,9 +10,9 @@ import pprint
 
 from torch.utils.tensorboard import SummaryWriter
 
-from Net.PPO_Net import Actor, Critic, ActorCritic
+# from Net.PPO_Net import Actor, Critic, ActorCritic
 from typing import Union, Tuple, Any, Optional, Type, Sequence
-
+# from Thirdpart.tianshou.examples.atari.atari_network import DQN, layer_init, scale_obs
 import torch, numpy as np
 import datetime
 from torch import nn
@@ -23,8 +23,8 @@ from tianshou.data import Collector, VectorReplayBuffer
 from tianshou.policy import ICMPolicy, PPOPolicy
 from tianshou.trainer import onpolicy_trainer
 from tianshou.utils import TensorboardLogger, WandbLogger
-from tianshou.utils.net.common import ActorCritic
-from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
+# from tianshou.utils.net.common import ActorCritic
+# from tianshou.utils.net.discrete import Actor, Critic, IntrinsicCuriosityModule
 class PPO_policy():
     def __init__(self,
                  state_shape,
@@ -74,6 +74,18 @@ class PPO_policy():
 
         actor = Actor(self.state_shape,self.action_shape, self.device, norm_layer=norm_layer, activation=activation,flatten_input=False)
         critic = Critic(self.action_shape, self.device, norm_layer=norm_layer, activation=activation, flatten_input=flatten_input)
+        # net_cls = scale_obs(DQN) if scale_obs else DQN
+        # net = net_cls(
+        #
+        #     state_shape,
+        #     action_shape,
+        #     device=device,
+        #     features_only=True,
+        #     output_dim=3,
+        #     layer_init=layer_init,
+        # )
+        # actor = Actor(net, action_shape, device=device, softmax_output=False)
+        # critic = Critic(net, device=device)
         optim = torch.optim.Adam(
             ActorCritic(actor, critic).parameters(), lr=lr, eps=1e-5
         )

@@ -28,7 +28,7 @@ class Actor(nn.Module):
         self.output_dim = action_shape
         if norm_layer:
             self.model = nn.Sequential(*[
-                norm_layer(normalized_shape=state_shape,device=self.device),
+                norm_layer(normalized_shape=np.prod(state_shape),device=self.device),
                 nn.Linear(self.input_dim, 128), activation(),
                 nn.Linear(128, 128), activation(),
                 nn.Linear(128, 64), activation(),

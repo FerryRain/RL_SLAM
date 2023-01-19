@@ -5,19 +5,19 @@ import numpy as np
 
 import rospy
 import torch
-from cv_bridge import CvBridge
+from gym import spaces
 
-from hwt_data.msg import Hwt_ht_basic
+from cv_bridge import CvBridge
 from hwt_data.msg import Hwt_ht_position
 from sensor_msgs.msg import Image
 
 from RL_train.preprocess_vector_class import Vector
-from visualization_msgs.msg import MarkerArray
 import argparse
 
-GOAL_REACHED_DIST = 30
+
+GOAL_REACHED_DIST = 50
 COLLISION_DIST = 0.35
-TIME_DELTA = 5
+TIME_DELTA = 3
 
 
 def args_set():
@@ -42,45 +42,6 @@ def args_set():
 
     return parser.parse_args()
 
-# Check if the random goal position is located on an obstacle and do not accept it if it is
-def check_pos(x, y):
-    goal_ok = True
-
-    if -3.8 > x > -6.2 and 6.2 > y > 3.8:
-        goal_ok = False
-
-    if -1.3 > x > -2.7 and 4.7 > y > -0.2:
-        goal_ok = False
-
-    if -0.3 > x > -4.2 and 2.7 > y > 1.3:
-        goal_ok = False
-
-    if -0.8 > x > -4.2 and -2.3 > y > -4.2:
-        goal_ok = False
-
-    if -1.3 > x > -3.7 and -0.8 > y > -2.7:
-        goal_ok = False
-
-    if 4.2 > x > 0.8 and -1.8 > y > -3.2:
-        goal_ok = False
-
-    if 4 > x > 2.5 and 0.7 > y > -3.2:
-        goal_ok = False
-
-    if 6.2 > x > 3.8 and -3.3 > y > -4.2:
-        goal_ok = False
-
-    if 4.2 > x > 1.3 and 3.7 > y > 1.5:
-        goal_ok = False
-
-    if -3.0 > x > -7.2 and 0.5 > y > -1.5:
-        goal_ok = False
-
-    if x > 4.5 or x < -4.5 or y > 4.5 or y < -4.5:
-        goal_ok = False
-
-    return goal_ok
-
 
 class GazeboEnv:
     """Superclass for all Gazebo environments."""
@@ -98,12 +59,17 @@ class GazeboEnv:
         self.pix_x = 330
         self.pix_y = 250
 
-        self.id = 500
+        self.id = 1
+
+        self.step_now = 0
 
         # self.last_odom = None
 
         self.args = args
         self.Vec = Vector(self.args)
+
+        self.action_space = spaces.Box(low=-5, high=5, shape=(1,2), dtype=np.float32)
+        self.observation_space = spaces.Box(low=0, high=640, shape=(1, 8), dtype=np.float32)
 
 
 
@@ -132,7 +98,7 @@ class GazeboEnv:
         cmd.Set_local_pose[1] = float(action[1])
         cmd.Set_local_pose[2] = float(0)
         self.action_pub.publish(cmd)
-        self.id += 10
+        self.id += 1
 
 
         # propagate state for TIME_DELTA seconds
@@ -147,15 +113,15 @@ class GazeboEnv:
 
         try:
             state = self.Vec.get_vector(self.Vec.color_image, self.Vec.basic)
-            state_array = state.numpy()
+            state_array = np.around(state.numpy(), decimals=2)
+            state = torch.from_numpy(state_array)
         except:
-            state = self.Vec.get_vector(self.Vec.color_image, self.Vec.basic)
             state = None
-            state_array = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+            state_array = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
             print("step failed: data fusion faild")
 
         if state == None:
-            state_array = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+            state_array = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
             state = torch.from_numpy(state_array)
 
         # Calculate distance to the goal from the robot
@@ -171,10 +137,16 @@ class GazeboEnv:
         # Detect if the goal has been reached and give a large positive reward
         if distance2 < GOAL_REACHED_DIST:
             target = True
+        done = False
 
-        done = True
+        self.step_now += 1
         # state = np.append(laser_state, robot_state)
-        reward = self.get_reward(target, distance, distance2)
+        reward = self.get_reward(target, distance, distance2, state_array)
+        if self.step_now >= 5 or target \
+                or (state_array[0]==0.0 and state_array[1]==0.0
+                    and state_array[2]==0.0 and state_array[3]== 0.0):
+            done = True
+            self.step_now = 0
         print(reward)
         return state, reward, done, target
 
@@ -202,12 +174,14 @@ class GazeboEnv:
 
         try:
             state = self.Vec.get_vector(self.Vec.color_image, self.Vec.basic)
+            state_array = np.around(state.numpy(), decimals=2)
+            state = torch.from_numpy(state_array)
         except:
             state = None
-            state = self.Vec.get_vector(self.Vec.color_image, self.Vec.basic)
+            # state = self.Vec.get_vector(self.Vec.color_image, self.Vec.basic)
             print("reset failed: data fusion faild0")
         if state == None:
-            state_array = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+            state_array = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
             state = torch.from_numpy(state_array)
 
         return state
@@ -215,17 +189,36 @@ class GazeboEnv:
 
 
     @staticmethod
-    def get_reward(target, distance, distance2):
+    def get_reward(target, distance, distance2, state_array):
         if target:
-            return 100.0
+            return 1000.0
+        elif state_array[0]==0.0 and state_array[1]==0.0 \
+                and state_array[2]==0.0 and state_array[3]== 0.0:
+            return -800.0 - 20*distance
         else:
-            return -(1*distance + 0.01*distance2)
+            return -(20*distance + 2*distance2)
+
+    def seed(self, seed):
+        np.random.seed(seed)
+
+    def render(self):
+        pass
+
+
 
 if __name__ == '__main__':
+    import gym
+
+    # env = gym.make("LunarLander-v2", render_mode="human")
     args = args_set()
     env = GazeboEnv(args)
     i = 0
     while i<3:
         i += 1
-        env.reset()
-        env.step([3.0, 0.0])
+        state = env.reset()
+        # state = env.step([3.0, 0.0])
+        # torch.round(state)
+        print(state)
+    # action_space = spaces.Box(low=-5, high=5, shape=(1,2), dtype=np.float32)
+    # print(np.prod(action_space))
+    # print(action_space)
