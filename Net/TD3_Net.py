@@ -12,9 +12,9 @@ class Actor(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(Actor, self).__init__()
 
-        self.layer_1 = nn.Linear(state_dim, 800)
-        self.layer_2 = nn.Linear(800, 600)
-        self.layer_3 = nn.Linear(600, action_dim)
+        self.layer_1 = nn.Linear(state_dim, 60)
+        self.layer_2 = nn.Linear(60, 40)
+        self.layer_3 = nn.Linear(40, action_dim)
         self.tanh = nn.Tanh()
 
     def forward(self, s):
@@ -28,15 +28,26 @@ class Critic(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(Critic, self).__init__()
 
-        self.layer_1 = nn.Linear(state_dim, 800)
-        self.layer_2_s = nn.Linear(800, 600)
-        self.layer_2_a = nn.Linear(action_dim, 600)
-        self.layer_3 = nn.Linear(600, 1)
+        # 2023年1月20日 修改 提高训练速度以及准确率 网络宽度
+        self.layer_1 = nn.Linear(state_dim, 80)
+        self.layer_2_s = nn.Linear(80, 60)
+        self.layer_2_a = nn.Linear(action_dim, 60)
+        self.layer_3 = nn.Linear(60, 1)
 
-        self.layer_4 = nn.Linear(state_dim, 800)
-        self.layer_5_s = nn.Linear(800, 600)
-        self.layer_5_a = nn.Linear(action_dim, 600)
-        self.layer_6 = nn.Linear(600, 1)
+        self.layer_4 = nn.Linear(state_dim, 80)
+        self.layer_5_s = nn.Linear(80, 60)
+        self.layer_5_a = nn.Linear(action_dim, 60)
+        self.layer_6 = nn.Linear(60, 1)
+
+        # self.layer_1 = nn.Linear(state_dim, 60)
+        # self.layer_2_s = nn.Linear(60, 40)
+        # self.layer_2_a = nn.Linear(action_dim, 40)
+        # self.layer_3 = nn.Linear(40, 1)
+        #
+        # self.layer_4 = nn.Linear(state_dim, 60)
+        # self.layer_5_s = nn.Linear(60, 40)
+        # self.layer_5_a = nn.Linear(action_dim, 40)
+        # self.layer_6 = nn.Linear(40, 1)
 
     def forward(self, s, a):
         s1 = F.relu(self.layer_1(s))

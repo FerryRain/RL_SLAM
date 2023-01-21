@@ -68,22 +68,21 @@ if __name__ == '__main__':
     max_ep = 500  # maximum number of steps per episode
     eval_ep = 10  # number of episodes for evaluation
     max_timesteps = 5e6  # Maximum number of steps to perform
-    expl_noise = 0.1  # Initial exploration noise starting value in range [expl_min ... 1]
+    expl_noise = 0.3  # Initial exploration noise starting value in range [expl_min ... 1]
     expl_decay_steps = (
-        500000  # Number of steps over which the initial exploration noise will decay over
+        1500  # Number of steps over which the initial exploration noise will decay over
     )
-    expl_min = 0.01  # Exploration noise after the decay in range [0...expl_noise]
-    batch_size = 40  # Size of the mini-batch
+    expl_min = 0.05  # Exploration noise after the decay in range [0...expl_noise]
+    batch_size = 128  # Size of the mini-batch
     discount = 0.99999  # Discount factor to calculate the discounted future reward (should be close to 1)
     tau = 0.005  # Soft target update variable (should be close to 0)
-    policy_noise = 0.2  # Added noise for exploration
-    noise_clip = 0.5  # Maximum clamping values of the noise
-    policy_freq = 2  # Frequency of Actor network updates
+    policy_noise = 1  # Added noise for exploration
+    noise_clip = 5  # Maximum clamping values of the noise
+    policy_freq = 4  # Frequency of Actor network updates
     buffer_size = 1e6  # Maximum size of the buffer
     file_name = "TD3_velodyne"  # name of the file to store the policy
     save_model = True  # Weather to save the model or not
     load_model = False  # Weather to load a stored model
-    random_near_obstacle = True  # To take random actions near obstacles or not
 
     if not os.path.exists("../results"):
         os.makedirs("../results")
@@ -91,9 +90,9 @@ if __name__ == '__main__':
         os.makedirs("../pytorch_models")
 
     # Create the network
-    state_dim = 8
+    state_dim = 5
     action_dim = 2
-    max_action = 5
+    max_action = 1
     network = TD3(state_dim, action_dim, max_action, device)
     replay_buffer = ReplayBuffer(buffer_size, args.seed)
 
@@ -178,6 +177,7 @@ if __name__ == '__main__':
             timestep += 1
             timesteps_since_eval += 1
         except:
+            print("Error")
             pass
 
     if save_model:

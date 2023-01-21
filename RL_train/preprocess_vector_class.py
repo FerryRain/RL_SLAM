@@ -42,7 +42,7 @@ def args_set():
     """
     #Yolo Part
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str, default='yolov7-tiny.pt', help='model.pt path(s)')
+    parser.add_argument('--weights', nargs='+', type=str, default='best.pt', help='model.pt path(s)')
     parser.add_argument('--img-size', type=int, default=640, help='inference size (pixels)')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='object confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='IOU threshold for NMS')
@@ -185,18 +185,29 @@ class Vector():
     def get_vector(self, image, sensor):
         pred = self.detect(image)
         sensor = np.array(
-            [round(sensor.position_now[2], 2), round(sensor.attitude[2], 2)])
+            [round(sensor.position_now[2]/10, 2)])
+        # sensor = np.array(
+            # [round(sensor.position_now[2], 0), round(sensor.attitude[2], 2)])
 
         # sensor = np.array(
         #     [round(sensor.position_now[0], 2), round(sensor.position_now[1], 2), round(sensor.position_now[2], 2),
         #      round(sensor.twist_now[0], 2), round(sensor.twist_now[1], 2), round(sensor.attitude[2], 2)])
         pred = pred[0].numpy()
         if pred.shape[0] != 0:
-            vector = torch.from_numpy(np.append(pred[0], sensor))
+            pred[0][0:4] = self.norm_vector(pred[0][:4])
+            vector = torch.from_numpy(np.around(np.append(pred[0][0:4], sensor), decimals=2))
         else:
             vector = None
         print(vector)
         return vector
+
+    def norm_vector(self, vec):
+        x_min, x_max, y_min, y_max = 0, 640, 0, 480
+        vec[0] = (vec[0] - x_min) / (x_max - x_min)
+        vec[2] = (vec[2] - x_min) / (x_max - x_min)
+        vec[1] = (vec[1] - y_min) / (y_max - y_min)
+        vec[3] = (vec[3] - y_min) / (y_max - y_min)
+        return vec
 
 """
 -------------------------------------
@@ -205,15 +216,15 @@ class Vector():
 """
 if __name__ == '__main__':
     args = args_set()
-
+    rospy.init_node('get_image', anonymous=True)
     Vec = Vector(args)
 
     while True:
         try:
             state = Vec.get_vector(Vec.color_image,Vec.basic)
-            state_array = state.numpy()
-            print(state_array[0])
+            print(state)
         except:
+            state = Vec.get_vector(Vec.color_image, Vec.basic)
             print("data fusion faild")
 
         key = cv2.waitKey(1) & 0xFF
@@ -222,3 +233,4 @@ if __name__ == '__main__':
             rospy.signal_shutdown("shut_down")
             break
     # rospy.spin()
+

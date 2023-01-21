@@ -15,7 +15,7 @@ from RL_train.preprocess_vector_class import Vector
 import argparse
 
 
-GOAL_REACHED_DIST = 50
+GOAL_REACHED_DIST = 0.04
 COLLISION_DIST = 0.35
 TIME_DELTA = 3
 
@@ -56,8 +56,8 @@ class GazeboEnv:
         self.goal_x = 3.0
         self.goal_y = 0.0
 
-        self.pix_x = 330
-        self.pix_y = 250
+        self.pix_x = 0.5
+        self.pix_y = 0.5
 
         self.id = 1
 
@@ -69,7 +69,7 @@ class GazeboEnv:
         self.Vec = Vector(self.args)
 
         self.action_space = spaces.Box(low=-5, high=5, shape=(1,2), dtype=np.float32)
-        self.observation_space = spaces.Box(low=0, high=640, shape=(1, 8), dtype=np.float32)
+        self.observation_space = spaces.Box(low=0, high=640, shape=(1, 6), dtype=np.float32)
 
 
 
@@ -117,11 +117,11 @@ class GazeboEnv:
             state = torch.from_numpy(state_array)
         except:
             state = None
-            state_array = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+            state_array = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
             print("step failed: data fusion faild")
 
         if state == None:
-            state_array = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+            state_array = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
             state = torch.from_numpy(state_array)
 
         # Calculate distance to the goal from the robot
@@ -181,7 +181,7 @@ class GazeboEnv:
             # state = self.Vec.get_vector(self.Vec.color_image, self.Vec.basic)
             print("reset failed: data fusion faild0")
         if state == None:
-            state_array = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+            state_array = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
             state = torch.from_numpy(state_array)
 
         return state
@@ -191,12 +191,12 @@ class GazeboEnv:
     @staticmethod
     def get_reward(target, distance, distance2, state_array):
         if target:
-            return 1000.0
+            return 100.0
         elif state_array[0]==0.0 and state_array[1]==0.0 \
                 and state_array[2]==0.0 and state_array[3]== 0.0:
-            return -800.0 - 20*distance
+            return -10 - 2*distance
         else:
-            return -(20*distance + 2*distance2)
+            return -(2*distance + 20*distance2)
 
     def seed(self, seed):
         np.random.seed(seed)
@@ -216,9 +216,9 @@ if __name__ == '__main__':
     while i<3:
         i += 1
         state = env.reset()
-        # state = env.step([3.0, 0.0])
+        state = env.step([1.0, 0.0])
         # torch.round(state)
-        print(state)
+        # print(state)
     # action_space = spaces.Box(low=-5, high=5, shape=(1,2), dtype=np.float32)
     # print(np.prod(action_space))
     # print(action_space)
