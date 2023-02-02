@@ -68,9 +68,9 @@ if __name__ == '__main__':
     max_ep = 500  # maximum number of steps per episode
     eval_ep = 10  # number of episodes for evaluation
     max_timesteps = 5e6  # Maximum number of steps to perform
-    expl_noise = 0.3  # Initial exploration noise starting value in range [expl_min ... 1]
+    expl_noise = 0.5  # Initial exploration noise starting value in range [expl_min ... 1]
     expl_decay_steps = (
-        1500  # Number of steps over which the initial exploration noise will decay over
+        2200  # Number of steps over which the initial exploration noise will decay over
     )
     expl_min = 0.05  # Exploration noise after the decay in range [0...expl_noise]
     batch_size = 128  # Size of the mini-batch

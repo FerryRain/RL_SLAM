@@ -14,8 +14,7 @@ from sensor_msgs.msg import Image
 from RL_train.preprocess_vector_class import Vector
 import argparse
 
-
-GOAL_REACHED_DIST = 0.04
+GOAL_REACHED_DIST = 0.03
 COLLISION_DIST = 0.35
 TIME_DELTA = 3
 
@@ -26,7 +25,7 @@ def args_set():
     Returns:
         Args:
     """
-    #Yolo Part
+    # Yolo Part
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default='best.pt', help='model.pt path(s)')
     parser.add_argument('--img-size', type=int, default=640, help='inference size (pixels)')
@@ -68,16 +67,13 @@ class GazeboEnv:
         self.args = args
         self.Vec = Vector(self.args)
 
-        self.action_space = spaces.Box(low=-5, high=5, shape=(1,2), dtype=np.float32)
+        self.action_space = spaces.Box(low=-5, high=5, shape=(1, 2), dtype=np.float32)
         self.observation_space = spaces.Box(low=0, high=640, shape=(1, 6), dtype=np.float32)
-
-
 
         self.action_pub = rospy.Publisher("/hwt/px4/Setmsgs/cmd", Hwt_ht_position, queue_size=1)
         # self.basic_Sub = rospy.Subscriber(
         #     "/hwt/px4/basic", Hwt_ht_basic, self.odom_callback, queue_size=1
         # )
-
 
     # def callback(self, data1):
     #     global color_image
@@ -99,7 +95,6 @@ class GazeboEnv:
         cmd.Set_local_pose[2] = float(0)
         self.action_pub.publish(cmd)
         self.id += 1
-
 
         # propagate state for TIME_DELTA seconds
         time.sleep(TIME_DELTA)
@@ -130,8 +125,8 @@ class GazeboEnv:
         )
 
         distance2 = np.linalg.norm(
-            [(state_array[0] + (state_array[2] - state_array[0])/2) - self.pix_x,
-             (state_array[1] + (state_array[3] - state_array[1])/2) - self.pix_y]
+            [(state_array[0] + (state_array[2] - state_array[0]) / 2) - self.pix_x,
+             (state_array[1] + (state_array[3] - state_array[1]) / 2) - self.pix_y]
         )
 
         # Detect if the goal has been reached and give a large positive reward
@@ -143,8 +138,8 @@ class GazeboEnv:
         # state = np.append(laser_state, robot_state)
         reward = self.get_reward(target, distance, distance2, state_array)
         if self.step_now >= 5 or target \
-                or (state_array[0]==0.0 and state_array[1]==0.0
-                    and state_array[2]==0.0 and state_array[3]== 0.0):
+                or (state_array[0] == 0.0 and state_array[1] == 0.0
+                    and state_array[2] == 0.0 and state_array[3] == 0.0):
             done = True
             self.step_now = 0
         print(reward)
@@ -156,9 +151,10 @@ class GazeboEnv:
         cmd.id = self.id
         self.id += 1
         cmd.MOVE_FORM = 0
-        cmd.Set_local_pose[0] = np.random.uniform(0.0,4.0)
+        cmd.Set_local_pose[0] = np.random.uniform(0.0, 4.0)
         cmd.Set_local_pose[1] = np.random.uniform(-1.0, 3.0)
-        cmd.Set_local_pose[2] = np.random.uniform(4.5, 6.0)
+        #cmd.Set_local_pose[2] = np.random.uniform(4.5, 6.0)
+        cmd.Set_local_pose[2] = float(np.random.randint(5, 10))
         cmd.Set_yaw = np.random.uniform(-np.pi, np.pi)
         self.action_pub.publish(cmd)
         time.sleep(TIME_DELTA)
@@ -186,24 +182,21 @@ class GazeboEnv:
 
         return state
 
-
-
     @staticmethod
     def get_reward(target, distance, distance2, state_array):
         if target:
             return 100.0
-        elif state_array[0]==0.0 and state_array[1]==0.0 \
-                and state_array[2]==0.0 and state_array[3]== 0.0:
-            return -10 - 2*distance
+        elif state_array[0] == 0.0 and state_array[1] == 0.0 \
+                and state_array[2] == 0.0 and state_array[3] == 0.0:
+            return -10 - 2 * distance
         else:
-            return -(2*distance + 20*distance2)
+            return -(2 * distance + 20 * distance2)
 
     def seed(self, seed):
         np.random.seed(seed)
 
     def render(self):
         pass
-
 
 
 if __name__ == '__main__':
@@ -213,7 +206,7 @@ if __name__ == '__main__':
     args = args_set()
     env = GazeboEnv(args)
     i = 0
-    while i<3:
+    while i < 3:
         i += 1
         state = env.reset()
         state = env.step([1.0, 0.0])
